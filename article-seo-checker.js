@@ -1,138 +1,139 @@
-function countWords(content) {
+// article-seo-checker.js
+(function () {
+  "use strict";
 
-  return content.trim().split(/\s+/).length;
-
-}
-
-function countKeywordOccurrences(content, keyword) {
-
-  var regex = new RegExp("\\b" + keyword + "\\b", "gi");
-
-  var match = content.match(regex);
-
-  return match ? match.length : 0;
-
-}
-
-function analyzeKeywordInFirst100(content, keyword) {
-
-  var first = content.split(" ").slice(0, 100).join(" ");
-
-  return countKeywordOccurrences(first, keyword);
-
-}
-
-function executeSEOCheck() {
-
-  var content = articleInput.value;
-
-  var title = titleInput.value.trim();
-
-  var keyword = keywordInput.value.trim().toLowerCase();
-
-  var meta = metaDescriptionInput.value.trim();
-
-  if (!content || !title || !keyword || !meta) {
-
-    alert("Mohon isi semua field sebelum menekan tombol Eksekusi.");
-
-    return;
-
+  // helper: escape string untuk regex
+  function escapeRegex(s) {
+    return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   }
 
-  var wordCount = countWords(content);
+  function countWords(content) {
+    if (!content) return 0;
+    // hapus multiple whitespace & newline then split
+    return content.trim().replace(/\s+/g, " ").split(" ").filter(Boolean).length;
+  }
 
-  var keyCount = countKeywordOccurrences(content, keyword);
+  function countKeywordOccurrences(content, keyword) {
+    if (!keyword) return 0;
+    var re = new RegExp("\\b" + escapeRegex(keyword) + "\\b", "gi");
+    var m = content.match(re);
+    return m ? m.length : 0;
+  }
 
-  var density = ((keyCount / wordCount) * 100).toFixed(2);
+  function analyzeKeywordInFirst100(content, keyword) {
+    if (!content) return 0;
+    var words = content.trim().replace(/\s+/g, " ").split(" ").filter(Boolean);
+    var first = words.slice(0, 100).join(" ");
+    return countKeywordOccurrences(first, keyword);
+  }
 
-  wordCountEl.textContent = wordCount;
+  function getWordCountMessage(n) {
+    if (n < 700) return "Artikel terlalu pendek.";
+    if (n < 1400) return "Baik, sudah cukup panjang.";
+    return "Excellent! Sangat SEO friendly.";
+  }
 
-  keywordCountEl.textContent = keyCount;
+  function generateSuggestions(firstHit) {
+    var txt = "<h3>Saran SEO:</h3><ul>";
+    txt += "<li>Gunakan internal link ke artikel terkait</li>";
+    txt += "<li>Optimalkan penggunaan H2 dan H3</li>";
+    txt += "<li>Gunakan gambar dengan ALT berisi keyword</li>";
+    txt += "<li>Perpendek paragraf panjang</li>";
+    if (firstHit === 0) txt += "<li><b>Tambahkan keyword di 100 kata pertama</b></li>";
+    txt += "</ul>";
+    return txt;
+  }
 
-  keywordPercentageEl.textContent = density + "%";
+  // main function (exposed)
+  function executeSEOCheck() {
+    var articleInput = document.getElementById("articleInput");
+    var titleInput = document.getElementById("titleInput");
+    var keywordInput = document.getElementById("keywordInput");
+    var metaDescriptionInput = document.getElementById("metaDescriptionInput");
 
-  wordCountMessage.textContent = getWordCountMessage(wordCount);
+    // output elements
+    var wordCountEl = document.getElementById("wordCount");
+    var keywordCountEl = document.getElementById("keywordCount");
+    var keywordPercentageEl = document.getElementById("keywordPercentage");
+    var keywordInFirst100Result = document.getElementById("keywordInFirst100Result");
+    var keywordInTitleAndMeta = document.getElementById("keywordInTitleAndMeta");
+    var wordCountMessage = document.getElementById("wordCountMessage");
+    var suggestionsContainer = document.getElementById("suggestionsContainer");
+    var resultContainer = document.getElementById("resultContainer");
 
-  var in100 = analyzeKeywordInFirst100(content, keyword);
+    if (!articleInput || !titleInput || !keywordInput || !metaDescriptionInput) {
+      alert("Element form tidak ditemukan. Pastikan HTML hanya memiliki satu SEO Checker dan id sesuai.");
+      return;
+    }
 
-  keywordInFirst100Result.textContent = in100 > 0 ? `Ada (${in100})` : "Tidak ada";
+    var content = articleInput.value || "";
+    var title = (titleInput.value || "").trim();
+    var keyword = (keywordInput.value || "").trim().toLowerCase();
+    var meta = (metaDescriptionInput.value || "").trim();
 
-  keywordInTitleAndMeta.textContent =
+    if (!content || !title || !keyword || !meta) {
+      alert("Mohon isi semua field sebelum menekan tombol Eksekusi.");
+      return;
+    }
 
-    title.toLowerCase().includes(keyword) && meta.toLowerCase().includes(keyword)
+    var wordCount = countWords(content);
+    var keyCount = countKeywordOccurrences(content, keyword);
+    var density = wordCount === 0 ? 0 : ((keyCount / wordCount) * 100);
+    var densityStr = density.toFixed(2) + "%";
 
-      ? "Ya"
+    if (density > 5) densityStr += " Terlalu tinggi";
+    else densityStr += " Bagus";
 
-      : "Tidak";
+    // write results (safely check elements exist)
+    if (wordCountEl) wordCountEl.textContent = wordCount;
+    if (keywordCountEl) keywordCountEl.textContent = keyCount;
+    if (keywordPercentageEl) keywordPercentageEl.textContent = densityStr;
+    if (wordCountMessage) wordCountMessage.textContent = getWordCountMessage(wordCount);
 
-  suggestionsContainer.innerHTML = generateSuggestions(in100);
+    var in100 = analyzeKeywordInFirst100(content, keyword);
+    if (keywordInFirst100Result) keywordInFirst100Result.textContent = in100 > 0 ? "Ada (" + in100 + ")" : "Tidak ada";
 
-  if (density > 5) keywordPercentageEl.textContent += " Terlalu tinggi";
+    if (keywordInTitleAndMeta)
+      keywordInTitleAndMeta.textContent = title.toLowerCase().includes(keyword) || meta.toLowerCase().includes(keyword) ? "Ya" : "Tidak";
 
-  else keywordPercentageEl.textContent += " Bagus";
+    if (suggestionsContainer) suggestionsContainer.innerHTML = generateSuggestions(in100);
+    if (resultContainer) resultContainer.style.display = "block";
+  }
 
-  resultContainer.style.display = "block";
+  // meta char counter
+  function bindMetaCounter() {
+    var metaEl = document.getElementById("metaDescriptionInput");
+    var charCountEl = document.getElementById("characterCount");
+    if (!metaEl || !charCountEl) return;
+    function update() {
+      var max = 150;
+      var remain = max - metaEl.value.length;
+      charCountEl.textContent = "Sisa karakter: " + remain;
+      charCountEl.style.color = remain < 0 ? "red" : "black";
+    }
+    metaEl.addEventListener("input", update);
+    update();
+  }
 
-}
+  // safe init after DOM ready
+  document.addEventListener("DOMContentLoaded", function () {
+    // bind button if exists (preferred)
+    var btn = document.querySelector(".seoBtn");
+    if (btn) {
+      // remove inline onclick to avoid double-bind (if present)
+      btn.removeAttribute("onclick");
+      btn.addEventListener("click", executeSEOCheck);
+    }
+    // expose for backwards compatibility
+    window.executeSEOCheck = executeSEOCheck;
 
-function getWordCountMessage(n) {
+    bindMetaCounter();
+  });
 
-  if (n < 700) return "Artikel terlalu pendek.";
-
-  if (n < 1400) return "Baik, sudah cukup panjang.";
-
-  return "Excellent! Sangat SEO friendly.";
-
-}
-
-function generateSuggestions(firstHit) {
-
-  let txt = "<h3>Saran SEO:</h3><ul>";
-
-  txt += "<li>Gunakan internal link ke artikel terkait</li>";
-
-  txt += "<li>Optimalkan penggunaan H2 dan H3</li>";
-
-  txt += "<li>Gunakan gambar dengan ALT berisi keyword</li>";
-
-  txt += "<li>Perpendek paragraf panjang</li>";
-
-  if (firstHit === 0)
-
-    txt += "<li><b>Tambahkan keyword di 100 kata pertama</b></li>";
-
-  txt += "</ul>";
-
-  return txt;
-
-}
-
-function countMetaDescriptionCharacters() {
-
-  var max = 150;
-
-  var remain = max - metaDescriptionInput.value.length;
-
-  characterCount.textContent = "Sisa karakter: " + remain;
-
-  characterCount.style.color = remain < 0 ? "red" : "black";
-
-}
-
-metaDescriptionInput.addEventListener("input", countMetaDescriptionCharacters);
-
-countMetaDescriptionCharacters();
-
-const wordCountEl = document.getElementById("wordCount");
-
-const keywordCountEl = document.getElementById("keywordCount");
-
-const keywordPercentageEl = document.getElementById("keywordPercentage");
-
-const keywordInFirst100Result = document.getElementById("keywordInFirst100Result");
-
-const keywordInTitleAndMeta = document.getElementById("keywordInTitleAndMeta");
-
-const wordCountMessage = document.getElementById("wordCountMessage");
-
+  // also expose helper to check if script loaded
+  window.ArticleSeoChecker = {
+    version: "1.0",
+    execute: executeSEOCheck
+  };
+})();
+      
