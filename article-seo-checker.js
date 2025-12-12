@@ -1,5 +1,3 @@
-<script>
-
 function countWords(content) {
 
   return content.trim().split(/\s+/).length;
@@ -138,4 +136,3 @@ const keywordInTitleAndMeta = document.getElementById("keywordInTitleAndMeta");
 
 const wordCountMessage = document.getElementById("wordCountMessage");
 
-</script>
